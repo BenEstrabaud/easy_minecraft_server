@@ -1,0 +1,101 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server:java21
+    container_name: minecraft-server
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+      - "8080:8080"       # Squaremap web UI
+      - "24454:24454/udp" # Simple Voice Chat
+    environment:
+      # Server type
+      TYPE: "PAPER"
+      VERSION: ${VERSION:-LATEST}
+      EULA: "TRUE"
+
+      # Memory - using 2.5GB as discussed
+      MEMORY: "2560M"
+      JVM_XX_OPTS: >-
+        -XX:+UseG1GC
+        -XX:+ParallelRefProcEnabled
+        -XX:MaxGCPauseMillis=200
+        -XX:+UnlockExperimentalVMOptions
+        -XX:+DisableExplicitGC
+        -XX:G1NewSizePercent=30
+        -XX:G1MaxNewSizePercent=40
+        -XX:G1HeapRegionSize=8M
+        -XX:G1ReservePercent=20
+        -XX:G1MixedGCCountTarget=4
+        -XX:InitiatingHeapOccupancyPercent=15
+        -XX:G1MixedGCLiveThresholdPercent=90
+        -XX:SurvivorRatio=32
+        -XX:+PerfDisableSharedMem
+        -XX:MaxTenuringThreshold=1
+
+      # Server properties - optimized for small server
+      MAX_PLAYERS: 5
+      VIEW_DISTANCE: 8
+      SIMULATION_DISTANCE: 6
+      SPAWN_PROTECTION: 0
+      NETWORK_COMPRESSION_THRESHOLD: 256
+      MOTD: "Minecraft Server"
+      DIFFICULTY: "normal"
+      MODE: "survival"
+      SEED: ${SEED:-}
+
+      # Whitelist - comma-separated usernames
+      ENABLE_WHITELIST: ${ENABLE_WHITELIST:-true}
+      WHITELIST: ${WHITELIST:-}
+      ENFORCE_WHITELIST: "true"
+
+      # Enable RCON for console access
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
+      RCON_PORT: 25575
+
+      # Commands to run on server startup (after world loads)
+      RCON_CMDS_STARTUP: |
+        worldborder center 0 0
+        worldborder set ${WORLD_BORDER:-5000}
+        execute in minecraft:the_nether run worldborder center 0 0
+        execute in minecraft:the_nether run worldborder set ${NETHER_BORDER:-625}
+        execute in minecraft:the_end run worldborder center 0 0
+        execute in minecraft:the_end run worldborder set ${WORLD_BORDER:-5000}
+
+      EXEC_DIRECTLY: "true"
+      INIT_MEMORY: "2560M"
+      MAX_MEMORY: "2560M"
+
+    volumes:
+      - ./data:/data
+      - ./plugins:/plugins:ro
+      - ./config:/config:ro
+    healthcheck:
+      test: mc-health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # RCON web interface (optional - for easy console access)
+  rcon:
+    image: itzg/rcon
+    container_name: minecraft-rcon
+    restart: unless-stopped
+    depends_on:
+      minecraft:
+        condition: service_healthy
+    ports:
+      - "4326:4326"
+      - "4327:4327"
+    environment:
+      RWA_USERNAME: ${RWA_USERNAME:-admin}
+      RWA_PASSWORD: ${RWA_PASSWORD:-changeme}
+      RWA_ADMIN: "true"
+      RWA_RCON_HOST: minecraft
+      RWA_RCON_PORT: 25575
+      RWA_RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
+    profiles:
+      - rcon

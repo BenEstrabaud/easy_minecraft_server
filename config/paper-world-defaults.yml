@@ -1,0 +1,47 @@
+# Paper World Defaults - Optimized for small server (1-2 players)
+# This file is copied to data/config/paper-world-defaults.yml on first run
+
+_version: 31
+
+chunks:
+  auto-save-interval: 6000
+  max-auto-save-chunks-per-tick: 8
+  delay-chunk-unloads-by: 5s
+  entity-per-chunk-save-limit:
+    arrow: 8
+    ender_pearl: 8
+    experience_orb: 8
+    fireball: 8
+    small_fireball: 8
+    snowball: 8
+
+collisions:
+  max-entity-collisions: 4
+
+entities:
+  armor-stands:
+    tick: false
+  spawning:
+    per-player-mob-spawns: true
+
+environment:
+  treasure-maps:
+    enabled: true
+    find-already-discovered:
+      loot-tables: default
+      villager-trade: false
+
+spawn:
+  keep-spawn-loaded: false
+  keep-spawn-loaded-range: 4
+
+tick-rates:
+  container-update: 3
+  grass-spread: 4
+  mob-spawner: 2
+  sensor:
+    villager:
+      secondarypoisensor: 80
+  behavior:
+    villager:
+      validatenearbypoi: -1
