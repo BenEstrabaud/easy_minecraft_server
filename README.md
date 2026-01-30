@@ -156,9 +156,82 @@ docker exec minecraft-server rcon-cli --host 127.0.0.1 "whitelist remove PlayerN
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "whitelist list"
 ```
 
+## Migrating from Paper to Fabric
+
+A migration script handles the full process — backup, stop, install mods, and start Fabric:
+
+```bash
+./setup/migrate-paper-to-fabric.sh
+```
+
+The script will:
+1. Save all world data via RCON
+2. Create a timestamped backup of `data/`
+3. Stop the Paper server
+4. Install Fabric optimization mods (if not already present)
+5. Start the Fabric server
+
+**What transfers automatically:**
+- All world data (overworld, nether, the end)
+- Player inventories, positions, advancements, statistics
+- Whitelist, ops, banned players
+- World border settings (re-applied on startup)
+- Datapacks
+
+**What does NOT transfer:**
+- EssentialsX data (homes, warps, economy) — no Fabric equivalent
+- Squaremap renders — BlueMap generates its own 3D map
+- Plugin configs in `data/plugins/` — left on disk, ignored by Fabric
+
+After migration, install Fabric equivalents for your plugins:
+
+```bash
+./setup/fabric-bluemap.sh       # Web map (replaces Squaremap)
+./setup/fabric-voicechat.sh     # Voice chat (same mod, Fabric version)
+./setup/fabric-chunky.sh        # Chunk pregenerator
+docker compose --profile fabric restart minecraft-fabric
+```
+
+To revert, the script prints a restore command using the backup it created.
+
+## Migrating from Fabric to Paper
+
+```bash
+./setup/migrate-fabric-to-paper.sh
+```
+
+The script will:
+1. Save all world data via RCON
+2. Create a timestamped backup of `data/`
+3. Stop the Fabric server
+4. Install EssentialsX plugin (if `paper/plugins/` is empty)
+5. Start the Paper server
+
+**What transfers automatically:**
+- All world data (overworld, nether, the end)
+- Player inventories, positions, advancements, statistics
+- Whitelist, ops, banned players
+- World border settings (re-applied on startup)
+- Datapacks
+
+**What does NOT transfer:**
+- Mod data (ServerCore config, BlueMap renders, etc.)
+- Mod-specific configs in `data/config/` — left on disk, ignored by Paper
+
+After migration, install Paper equivalents for your mods:
+
+```bash
+./setup/paper-squaremap.sh     # Web map (replaces BlueMap)
+./setup/paper-voicechat.sh     # Voice chat (Paper version)
+./setup/paper-chunky.sh        # Chunk pregenerator
+docker compose --profile paper restart minecraft-paper
+```
+
+To revert, the script prints a restore command using the backup it created.
+
 ## Switching Server Types
 
-Both profiles share the same `./data/` directory. World data is compatible between Paper and Fabric.
+Both profiles share the same `./data/` directory. World data is compatible between Paper and Fabric. Only one can run at a time (they share `container_name: minecraft-server`).
 
 ```bash
 # Stop current server
@@ -168,7 +241,7 @@ docker compose --profile paper down
 docker compose --profile fabric up -d
 ```
 
-Note: Plugins and mods are not interchangeable. Paper plugins go in `paper/plugins/`, Fabric mods go in `fabric/mods/`.
+Plugins and mods are not interchangeable. Paper plugins go in `paper/plugins/`, Fabric mods go in `fabric/mods/`.
 
 ## Directory Structure
 
@@ -190,7 +263,9 @@ minecraft/
 │   ├── fabric-bluemap.sh     # BlueMap web map
 │   ├── fabric-voicechat.sh   # Simple Voice Chat (Fabric)
 │   ├── fabric-chunky.sh      # Chunky pregenerator (Fabric)
-│   └── common-datapacks.sh   # Vanilla datapacks
+│   ├── common-datapacks.sh   # Vanilla datapacks
+│   ├── migrate-paper-to-fabric.sh  # Paper → Fabric migration
+│   └── migrate-fabric-to-paper.sh  # Fabric → Paper migration
 └── data/                     # Server data (auto-created)
 ```
 
