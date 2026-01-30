@@ -1,6 +1,6 @@
 #!/bin/bash
-# Downloads and installs datapacks
-# Usage: ./setup-datapacks.sh
+# Downloads and installs datapacks (works with both Paper and Fabric)
+# Usage: ./setup/common-datapacks.sh
 
 set -e
 
@@ -31,7 +31,9 @@ echo "  docker exec minecraft-server rcon-cli --host 127.0.0.1 'datapack list'"
 echo "  docker exec minecraft-server rcon-cli --host 127.0.0.1 'reload'"
 echo ""
 echo "Or restart the server:"
-echo "  docker compose restart minecraft"
+echo "  docker compose --profile paper restart minecraft-paper"
+echo "  # or"
+echo "  docker compose --profile fabric restart minecraft-fabric"
 echo ""
 
 # List current datapacks

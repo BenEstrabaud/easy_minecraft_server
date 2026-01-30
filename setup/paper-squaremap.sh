@@ -3,7 +3,7 @@
 
 set -e
 
-PLUGINS_DIR="./plugins"
+PLUGINS_DIR="./paper/plugins"
 mkdir -p "$PLUGINS_DIR"
 
 echo "Fetching latest squaremap release from Hangar..."
@@ -33,7 +33,7 @@ echo ""
 echo "squaremap downloaded to $PLUGINS_DIR/$FILENAME"
 echo ""
 echo "Restart the server to load the plugin:"
-echo "  docker compose restart minecraft"
+echo "  docker compose --profile paper restart minecraft-paper"
 echo ""
 echo "Web UI will be at http://localhost:8080"
 echo ""

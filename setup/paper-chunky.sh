@@ -1,9 +1,9 @@
 #!/bin/bash
-# Downloads the Chunky chunk pregenerator plugin from Hangar
+# Downloads the Chunky chunk pregenerator plugin from Hangar (Paper version)
 
 set -e
 
-PLUGINS_DIR="./plugins"
+PLUGINS_DIR="./paper/plugins"
 mkdir -p "$PLUGINS_DIR"
 
 echo "Fetching latest Chunky release from Hangar..."
@@ -33,7 +33,7 @@ echo ""
 echo "Chunky downloaded to $PLUGINS_DIR/$FILENAME"
 echo ""
 echo "Restart the server to load the plugin:"
-echo "  docker compose restart minecraft"
+echo "  docker compose --profile paper restart minecraft-paper"
 echo ""
 echo "Then pregenerate your world (5000x5000 = 2500 block radius):"
 echo "  docker exec minecraft-server rcon-cli --host 127.0.0.1 'chunky radius 2500'"
@@ -44,4 +44,4 @@ echo "  docker exec minecraft-server rcon-cli --host 127.0.0.1 'chunky worldbord
 echo "  docker exec minecraft-server rcon-cli --host 127.0.0.1 'chunky start'"
 echo ""
 echo "Monitor progress:"
-echo "  docker compose logs -f minecraft"
+echo "  docker compose logs -f minecraft-paper"

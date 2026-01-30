@@ -1,60 +1,101 @@
-# PaperMC Minecraft Server (Docker)
+# Minecraft Server (Docker)
 
-Containerized PaperMC server optimized for small deployments (1-2 players, 2 cores, 3GB RAM).
+Containerized Minecraft server supporting both **PaperMC** and **Fabric**, optimized for small deployments (1-2 players, 2 cores, 3GB RAM).
 
 ## Quick Start
 
 ```bash
-# Start the server
-docker compose up -d
+# PaperMC (plugin-based)
+docker compose --profile paper up -d
+
+# Fabric (mod-based)
+docker compose --profile fabric up -d
 
 # View logs (wait for "Done" message)
-docker compose logs -f minecraft
+docker compose logs -f
 ```
 
 World borders for all dimensions are set automatically on startup based on `.env` settings.
 
-## Adding Squaremap
+## Server Types
+
+| Feature | PaperMC | Fabric |
+|---|---|---|
+| Extension type | Plugins (Bukkit/Spigot API) | Mods (Fabric API) |
+| Built-in optimizations | Yes (patched server) | No (add optimization mods) |
+| Web map | Squaremap (port 8080) | BlueMap (port 8100) |
+| Plugin/mod ecosystem | Large (Hangar, SpigotMC) | Large (Modrinth, CurseForge) |
+| Best for | Vanilla+ with admin tools | Modular performance tuning |
+
+Both use the same world data directory (`./data/`), so you can switch between them. Stop one profile before starting the other.
+
+## PaperMC Setup
 
 ```bash
-chmod +x setup-squaremap.sh
-./setup-squaremap.sh
+# Core admin commands (EssentialsX)
+./setup/paper-essentials.sh
 
-# Restart to load the plugin
-docker compose restart minecraft
-```
+# Web map viewer
+./setup/paper-squaremap.sh
 
-Squaremap web UI: http://your-server:8080
+# Proximity voice chat
+./setup/paper-voicechat.sh
 
-## EssentialsX & Simple Voice Chat
+# Chunk pregenerator
+./setup/paper-chunky.sh
 
-```bash
-chmod +x setup-essentials.sh
-./setup-essentials.sh
-docker compose restart minecraft
+# Restart to load plugins
+docker compose --profile paper restart minecraft-paper
 ```
 
 **EssentialsX** adds utility commands: `/home`, `/sethome`, `/back`, `/spawn`, `/tpa`, etc.
 
-**Simple Voice Chat** adds proximity voice chat. Players need the mod installed on their client:
-- https://modrinth.com/plugin/simple-voice-chat
+**Squaremap** web UI: `http://your-server:8080`
 
-## Chunk Pregeneration
-
-Pregenerating chunks eliminates lag when exploring and populates the squaremap.
+## Fabric Setup
 
 ```bash
-# Install Chunky plugin
-chmod +x setup-chunky.sh
-./setup-chunky.sh
-docker compose restart minecraft
+# Performance mods (Lithium, FerriteCore, Krypton, C2ME, ServerCore)
+./setup/fabric-optimization.sh
 
+# Web map viewer (BlueMap)
+./setup/fabric-bluemap.sh
+
+# Proximity voice chat
+./setup/fabric-voicechat.sh
+
+# Chunk pregenerator
+./setup/fabric-chunky.sh
+
+# Restart to load mods
+docker compose --profile fabric restart minecraft-fabric
+```
+
+**BlueMap** web UI: `http://your-server:8100`
+
+## Shared Features
+
+These work with both PaperMC and Fabric.
+
+### Datapacks
+
+```bash
+./setup/common-datapacks.sh
+```
+
+Datapacks are vanilla Minecraft features and work with any server type.
+
+### Chunk Pregeneration
+
+After installing Chunky (Paper or Fabric version):
+
+```bash
 # Pregenerate overworld (uses world border automatically)
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "chunky worldborder"
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "chunky start"
 
 # Monitor progress
-docker compose logs -f minecraft
+docker compose logs -f
 
 # After overworld completes, do nether
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "chunky world world_nether"
@@ -71,9 +112,7 @@ docker exec minecraft-server rcon-cli --host 127.0.0.1 "chunky pause"
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "chunky continue"
 ```
 
-Pregeneration runs in the background. For a 5000x5000 world, expect several hours depending on CPU.
-
-## Console Access
+### Console Access
 
 **Option 1: Docker attach**
 ```bash
@@ -93,40 +132,11 @@ Note: `--host 127.0.0.1` is required because Minecraft RCON only listens on IPv4
 
 **Option 3: Web RCON (optional)**
 ```bash
-docker compose --profile rcon up -d
+docker compose --profile paper --profile rcon up -d
 # Access at http://your-server:4326
 ```
 
-## Directory Structure
-
-```
-minecraft/
-├── docker-compose.yml
-├── .env                 # Environment overrides
-├── data/                # Server data (auto-created)
-│   ├── world/
-│   ├── plugins/
-│   └── ...
-├── plugins/             # Plugin JARs (read-only mount)
-├── config/              # Config templates
-└── setup-*.sh           # Setup scripts
-```
-
-## Configuration
-
-Edit `.env` or `docker-compose.yml` to customize:
-- `VERSION` - Minecraft version
-- `MEMORY` - JVM heap size
-- `VIEW_DISTANCE` / `SIMULATION_DISTANCE` - Chunk loading
-- `SEED` - World seed
-- `WORLD_BORDER` - Overworld/End border diameter (default: 5000)
-- `NETHER_BORDER` - Nether border diameter (default: 625, should be WORLD_BORDER/8)
-- `RCON_PASSWORD` - Minecraft RCON password (change this!)
-- `RWA_USERNAME` / `RWA_PASSWORD` - RCON web admin login (default: admin/changeme)
-- `ENABLE_WHITELIST` - Enable whitelist (default: true)
-- `WHITELIST` - Comma-separated Minecraft usernames
-
-## Whitelist
+### Whitelist
 
 Whitelist is enabled by default. Add players in `.env`:
 
@@ -136,43 +146,93 @@ WHITELIST=Player1,Player2,Player3
 
 Then recreate the container:
 ```bash
-docker compose up -d --force-recreate minecraft
+docker compose --profile paper up -d --force-recreate
 ```
 
 Or manage at runtime via RCON:
 ```bash
-# Add a player
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "whitelist add PlayerName"
-
-# Remove a player
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "whitelist remove PlayerName"
-
-# List whitelisted players
 docker exec minecraft-server rcon-cli --host 127.0.0.1 "whitelist list"
 ```
 
+## Switching Server Types
+
+Both profiles share the same `./data/` directory. World data is compatible between Paper and Fabric.
+
+```bash
+# Stop current server
+docker compose --profile paper down
+
+# Start the other
+docker compose --profile fabric up -d
+```
+
+Note: Plugins and mods are not interchangeable. Paper plugins go in `paper/plugins/`, Fabric mods go in `fabric/mods/`.
+
+## Directory Structure
+
+```
+minecraft/
+├── docker-compose.yml
+├── .env                      # Configuration
+├── paper/
+│   ├── plugins/              # PaperMC plugin JARs
+│   └── config/               # Paper config files
+├── fabric/
+│   └── mods/                 # Fabric mod JARs
+├── setup/
+│   ├── paper-squaremap.sh    # Squaremap web map
+│   ├── paper-essentials.sh   # EssentialsX admin commands
+│   ├── paper-voicechat.sh    # Simple Voice Chat (Paper)
+│   ├── paper-chunky.sh       # Chunky pregenerator (Paper)
+│   ├── fabric-optimization.sh # Lithium, FerriteCore, etc.
+│   ├── fabric-bluemap.sh     # BlueMap web map
+│   ├── fabric-voicechat.sh   # Simple Voice Chat (Fabric)
+│   ├── fabric-chunky.sh      # Chunky pregenerator (Fabric)
+│   └── common-datapacks.sh   # Vanilla datapacks
+└── data/                     # Server data (auto-created)
+```
+
+## Configuration
+
+Edit `.env` to customize:
+- `VERSION` - Minecraft version
+- `MEMORY` - JVM heap size
+- `VIEW_DISTANCE` / `SIMULATION_DISTANCE` - Chunk loading
+- `SEED` - World seed
+- `WORLD_BORDER` - Overworld/End border diameter (default: 5000)
+- `NETHER_BORDER` - Nether border diameter (default: 625, should be WORLD_BORDER/8)
+- `RCON_PASSWORD` - Minecraft RCON password (change this!)
+- `RWA_USERNAME` / `RWA_PASSWORD` - RCON web admin login
+- `ENABLE_WHITELIST` - Enable whitelist (default: true)
+- `WHITELIST` - Comma-separated Minecraft usernames
+
 ## Ports
 
-| Port      | Service                    |
-|-----------|----------------------------|
-| 25565     | Minecraft server           |
-| 8080      | Squaremap web UI           |
-| 24454/udp | Simple Voice Chat          |
-| 4326      | RCON web UI (optional)     |
-| 4327      | RCON websocket (optional)  |
+| Port | Service |
+|---|---|
+| 25565 | Minecraft server |
+| 8080 | Squaremap web UI (Paper) |
+| 8100 | BlueMap web UI (Fabric) |
+| 24454/udp | Simple Voice Chat |
+| 4326 | RCON web UI (optional) |
+| 4327 | RCON websocket (optional) |
 
 ## Useful Commands
 
 ```bash
 # Stop server
-docker compose down
+docker compose --profile paper down
+# or
+docker compose --profile fabric down
 
 # Backup world
 tar -czf backup-$(date +%Y%m%d).tar.gz data/world*
 
 # Update server
 docker compose pull
-docker compose up -d
+docker compose --profile paper up -d
 
 # View resource usage
 docker stats minecraft-server
@@ -181,9 +241,10 @@ docker stats minecraft-server
 ## Firewall (Ubuntu)
 
 ```bash
-sudo ufw allow 25565/tcp  # Minecraft
-sudo ufw allow 8080/tcp   # Squaremap (if needed externally)
-sudo ufw allow 24454/udp  # Simple Voice Chat
-sudo ufw allow 4326/tcp   # RCON web UI (if needed externally)
-sudo ufw allow 4327/tcp   # RCON websocket (if needed externally)
+sudo ufw allow 25565/tcp   # Minecraft
+sudo ufw allow 8080/tcp    # Squaremap (Paper, if needed externally)
+sudo ufw allow 8100/tcp    # BlueMap (Fabric, if needed externally)
+sudo ufw allow 24454/udp   # Simple Voice Chat
+sudo ufw allow 4326/tcp    # RCON web UI (if needed externally)
+sudo ufw allow 4327/tcp    # RCON websocket (if needed externally)
 ```

@@ -1,92 +1,123 @@
+x-common-minecraft: &common-minecraft
+  image: itzg/minecraft-server:java21
+  container_name: minecraft-server
+  restart: unless-stopped
+  tty: true
+  stdin_open: true
+  ports:
+    - "25565:25565"
+    - "24454:24454/udp" # Simple Voice Chat
+  environment: &common-env
+    VERSION: ${VERSION:-LATEST}
+    EULA: "TRUE"
+
+    # Memory
+    MEMORY: "2560M"
+    JVM_XX_OPTS: >-
+      -XX:+UseG1GC
+      -XX:+ParallelRefProcEnabled
+      -XX:MaxGCPauseMillis=200
+      -XX:+UnlockExperimentalVMOptions
+      -XX:+DisableExplicitGC
+      -XX:G1NewSizePercent=30
+      -XX:G1MaxNewSizePercent=40
+      -XX:G1HeapRegionSize=8M
+      -XX:G1ReservePercent=20
+      -XX:G1MixedGCCountTarget=4
+      -XX:InitiatingHeapOccupancyPercent=15
+      -XX:G1MixedGCLiveThresholdPercent=90
+      -XX:SurvivorRatio=32
+      -XX:+PerfDisableSharedMem
+      -XX:MaxTenuringThreshold=1
+
+    # Server properties
+    MAX_PLAYERS: 5
+    VIEW_DISTANCE: 8
+    SIMULATION_DISTANCE: 6
+    SPAWN_PROTECTION: 0
+    NETWORK_COMPRESSION_THRESHOLD: 256
+    MOTD: "Minecraft Server"
+    DIFFICULTY: "normal"
+    MODE: "survival"
+    SEED: ${SEED:-}
+
+    # Whitelist
+    ENABLE_WHITELIST: ${ENABLE_WHITELIST:-true}
+    WHITELIST: ${WHITELIST:-}
+    ENFORCE_WHITELIST: "true"
+
+    # RCON
+    ENABLE_RCON: "true"
+    RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
+    RCON_PORT: 25575
+
+    # World borders on startup
+    RCON_CMDS_STARTUP: |
+      worldborder center 0 0
+      worldborder set ${WORLD_BORDER:-5000}
+      execute in minecraft:the_nether run worldborder center 0 0
+      execute in minecraft:the_nether run worldborder set ${NETHER_BORDER:-625}
+      execute in minecraft:the_end run worldborder center 0 0
+      execute in minecraft:the_end run worldborder set ${WORLD_BORDER:-5000}
+
+    EXEC_DIRECTLY: "true"
+    INIT_MEMORY: "2560M"
+    MAX_MEMORY: "2560M"
+  volumes:
+    - ./data:/data
+  healthcheck: &common-healthcheck
+    test: mc-health
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 120s
+
 services:
-  minecraft:
-    image: itzg/minecraft-server:java21
-    container_name: minecraft-server
-    restart: unless-stopped
-    tty: true
-    stdin_open: true
+  # PaperMC server — start with: docker compose --profile paper up -d
+  minecraft-paper:
+    <<: *common-minecraft
+    environment:
+      <<: *common-env
+      TYPE: "PAPER"
     ports:
       - "25565:25565"
       - "8080:8080"       # Squaremap web UI
       - "24454:24454/udp" # Simple Voice Chat
-    environment:
-      # Server type
-      TYPE: "PAPER"
-      VERSION: ${VERSION:-LATEST}
-      EULA: "TRUE"
-
-      # Memory - using 2.5GB as discussed
-      MEMORY: "2560M"
-      JVM_XX_OPTS: >-
-        -XX:+UseG1GC
-        -XX:+ParallelRefProcEnabled
-        -XX:MaxGCPauseMillis=200
-        -XX:+UnlockExperimentalVMOptions
-        -XX:+DisableExplicitGC
-        -XX:G1NewSizePercent=30
-        -XX:G1MaxNewSizePercent=40
-        -XX:G1HeapRegionSize=8M
-        -XX:G1ReservePercent=20
-        -XX:G1MixedGCCountTarget=4
-        -XX:InitiatingHeapOccupancyPercent=15
-        -XX:G1MixedGCLiveThresholdPercent=90
-        -XX:SurvivorRatio=32
-        -XX:+PerfDisableSharedMem
-        -XX:MaxTenuringThreshold=1
-
-      # Server properties - optimized for small server
-      MAX_PLAYERS: 5
-      VIEW_DISTANCE: 8
-      SIMULATION_DISTANCE: 6
-      SPAWN_PROTECTION: 0
-      NETWORK_COMPRESSION_THRESHOLD: 256
-      MOTD: "Minecraft Server"
-      DIFFICULTY: "normal"
-      MODE: "survival"
-      SEED: ${SEED:-}
-
-      # Whitelist - comma-separated usernames
-      ENABLE_WHITELIST: ${ENABLE_WHITELIST:-true}
-      WHITELIST: ${WHITELIST:-}
-      ENFORCE_WHITELIST: "true"
-
-      # Enable RCON for console access
-      ENABLE_RCON: "true"
-      RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
-      RCON_PORT: 25575
-
-      # Commands to run on server startup (after world loads)
-      RCON_CMDS_STARTUP: |
-        worldborder center 0 0
-        worldborder set ${WORLD_BORDER:-5000}
-        execute in minecraft:the_nether run worldborder center 0 0
-        execute in minecraft:the_nether run worldborder set ${NETHER_BORDER:-625}
-        execute in minecraft:the_end run worldborder center 0 0
-        execute in minecraft:the_end run worldborder set ${WORLD_BORDER:-5000}
-
-      EXEC_DIRECTLY: "true"
-      INIT_MEMORY: "2560M"
-      MAX_MEMORY: "2560M"
-
     volumes:
       - ./data:/data
-      - ./plugins:/plugins:ro
-      - ./config:/config:ro
-    healthcheck:
-      test: mc-health
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+      - ./paper/plugins:/plugins:ro
+      - ./paper/config:/config:ro
+    profiles:
+      - paper
 
-  # RCON web interface (optional - for easy console access)
+  # Fabric server — start with: docker compose --profile fabric up -d
+  minecraft-fabric:
+    <<: *common-minecraft
+    environment:
+      <<: *common-env
+      TYPE: "FABRIC"
+    ports:
+      - "25565:25565"
+      - "8100:8100"       # BlueMap web UI
+      - "24454:24454/udp" # Simple Voice Chat
+    volumes:
+      - ./data:/data
+      - ./fabric/mods:/mods:ro
+    profiles:
+      - fabric
+
+  # RCON web interface (optional) — add --profile rcon to enable
   rcon:
     image: itzg/rcon
     container_name: minecraft-rcon
     restart: unless-stopped
     depends_on:
-      minecraft:
+      minecraft-paper:
         condition: service_healthy
+        required: false
+      minecraft-fabric:
+        condition: service_healthy
+        required: false
     ports:
       - "4326:4326"
       - "4327:4327"
@@ -94,7 +125,7 @@ services:
       RWA_USERNAME: ${RWA_USERNAME:-admin}
       RWA_PASSWORD: ${RWA_PASSWORD:-changeme}
       RWA_ADMIN: "true"
-      RWA_RCON_HOST: minecraft
+      RWA_RCON_HOST: minecraft-server
       RWA_RCON_PORT: 25575
       RWA_RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
     profiles:
