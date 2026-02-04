@@ -59,6 +59,9 @@ sys.exit(1)
 echo "=== Fabric Optimization Mods ==="
 echo ""
 
+# Fabric API is required by ServerCore and other mods
+download_mod "fabric-api" "Fabric API"
+echo ""
 download_mod "lithium" "Lithium"
 echo ""
 download_mod "ferrite-core" "FerriteCore"
