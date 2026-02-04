@@ -11,33 +11,47 @@ set -e
 MODS_DIR="./fabric/mods"
 mkdir -p "$MODS_DIR"
 
-# Helper: download the latest Fabric-compatible version of a Modrinth mod
+# Helper: download the latest Fabric-compatible version of a Modrinth mod for 1.21.x
 download_mod() {
   local slug="$1"
   local name="$2"
 
   echo "Fetching $name from Modrinth..."
 
-  # Get latest version for fabric loader
+  # Get versions for fabric loader, find one compatible with 1.21.x
   local response
-  response=$(curl -s "https://api.modrinth.com/v2/project/${slug}/version?loaders=%5B%22fabric%22%5D&limit=1")
+  response=$(curl -s "https://api.modrinth.com/v2/project/${slug}/version?loaders=%5B%22fabric%22%5D")
 
-  local download_url
-  download_url=$(echo "$response" | grep -o '"url":"[^"]*\.jar"' | head -1 | cut -d'"' -f4)
+  # Use Python to find the first version compatible with 1.21.x (including 1.21.11, 1.21.4, etc)
+  local version_info
+  version_info=$(echo "$response" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for v in data:
+    if 'fabric' in v['loaders']:
+        for gv in v['game_versions']:
+            if gv.startswith('1.21'):
+                # Find the primary jar file
+                for f in v['files']:
+                    if f['filename'].endswith('.jar'):
+                        print(f['url'])
+                        print(f['filename'])
+                        sys.exit(0)
+sys.exit(1)
+" 2>/dev/null) || true
 
-  local filename
-  filename=$(echo "$response" | grep -o '"filename":"[^"]*\.jar"' | head -1 | cut -d'"' -f4)
-
-  if [ -z "$download_url" ] || [ -z "$filename" ]; then
+  if [ -z "$version_info" ]; then
     echo "  Warning: Could not fetch $name - download manually from https://modrinth.com/mod/$slug"
     return 1
   fi
 
+  local download_url
+  download_url=$(echo "$version_info" | head -1)
+  local filename
+  filename=$(echo "$version_info" | tail -1)
+
   echo "  Downloading $filename..."
   curl -sL -o "$MODS_DIR/$filename" "$download_url"
-
-  # Remove old versions (match by slug prefix)
-  find "$MODS_DIR" -name "${slug}-*.jar" ! -name "$filename" -delete 2>/dev/null || true
 
   echo "  Done: $MODS_DIR/$filename"
 }
@@ -51,8 +65,8 @@ download_mod "ferrite-core" "FerriteCore"
 echo ""
 download_mod "krypton" "Krypton"
 echo ""
-download_mod "c2me-fabric" "C2ME"
-echo ""
+# Note: C2ME requires Java 22+, skipping since Docker image uses Java 21
+# download_mod "c2me-fabric" "C2ME"
 download_mod "servercore" "ServerCore"
 
 echo ""
